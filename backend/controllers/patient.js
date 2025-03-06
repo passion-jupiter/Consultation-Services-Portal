@@ -4,9 +4,19 @@ const {Patient} = require('../models/Patient');
 const asyncHandler = require('express-async-handler');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const APIFeatures = require('../helpers/apiFeatures');
 
 exports.getAllPatient = asyncHandler(async (req, res) => {
-  const patient = await Patient.find().select('-passwordHash');
+  const feature = new APIFeatures(
+    Patient.find().select('-passwordHash'),
+    req.query
+  )
+    .filter()
+    .sort()
+    .limitFields()
+    .paginate();
+  const patient = await feature.query;
+
   res.status(200).json({
     status: 'sucess',
     DateTime: req.requestTime,
@@ -41,8 +51,8 @@ exports.createPatient = asyncHandler(async (req, res) => {
     IDcard: req.body.IDcard,
     // currentAddress: req.body.currentAddress,
     // relative: req.body.relative,
-    // allergy: req.body.allergy,
-    // bloodType: req.body.bloodType,
+    allergy: req.body.allergy,
+    bloodType: req.body.bloodType,
   });
   patient = await patient.save();
 
@@ -53,6 +63,9 @@ exports.createPatient = asyncHandler(async (req, res) => {
 });
 
 exports.updatePatient = asyncHandler(async (req, res) => {
+  if (req.body.password) {
+    req.body.passwordHash = bcrypt.hashSync(req.body.password, 10)
+  }
   const patient = await Patient.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
@@ -82,7 +95,8 @@ exports.deletePatient = asyncHandler(async (req, res, next) => {
 });
 
 exports.checkPatientLogin = asyncHandler(async (req, res) => {
-  res.send(req.body);
+  // res.send(req.body);
+  res.send(res.locals);
 });
 
 exports.patientLogin = asyncHandler(async (req, res) => {

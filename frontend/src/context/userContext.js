@@ -42,17 +42,24 @@ export const useFetchUser = () => {
 
   const fetchUser = async (setState) => {
     try {
-      let res = await Axios.get('http://localhost:5000/api/v1/auth/patient/', {
+      let res = await Axios.get('http://localhost:5000/api/v1/auth/', {
         headers: {
           'x-acess-token': localStorage.getItem('token'),
         },
       });
-      res = await Axios.get(`http://localhost:5000/api/v1/patient/${res.data.id}`);
+      let type = res.data.type
+      res = await Axios.get(`http://localhost:5000/api/v1/${type}/${res.data.id}`, {
+        headers: {
+          'x-acess-token': localStorage.getItem('token'),
+        },
+      });
+      let result = res.data.data
+      result.type = type
       setState({
         isLoading: false,
         isUpdating: false,
         error: null,
-        data: res.data.data,
+        data: result,
       });
     } catch (error) {
       setState({

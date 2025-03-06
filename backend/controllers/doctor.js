@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const APIFeatures = require('../helpers/apiFeatures');
 const AppError = require('../helpers/appErrors')
 
+
 // multer
 const multer = require('multer');
 
@@ -16,7 +17,8 @@ const multerStorage = multer.diskStorage({
   },
   filename : (req,file,cb) => {
     const ext = file.mimetype.split('/')[1];
-    cb(null,`${req.body.name}.${ext}`)
+    const filename = file.originalname.split(' ').join('-');
+    cb(null,`${filename}-${Date.now()}.${ext}`)
   }
 });
 
@@ -49,9 +51,7 @@ exports.getAllDoctor = asyncHandler(async (req, res) => {
     status: 'sucess',
     DateTime: req.requestTime,
     result: doctors.length,
-    data: {
-      doctors,
-    },
+    data: doctors,
   });
 });
 
@@ -82,6 +82,8 @@ exports.createDoctor = asyncHandler(async (req, res) => {
   const specialization = await Specialization.findById(req.body.specialization);
   if (!specialization) return res.status(400).send('Invalid specialization');
 
+
+
   let doctor = new Doctor({
     name: req.body.name,
     email: req.body.email,
@@ -89,9 +91,16 @@ exports.createDoctor = asyncHandler(async (req, res) => {
     phone: req.body.phone,
     specialization: req.body.specialization,
     specializationDetail: req.body.specializationDetail,
-    backgroud: req.body.backgroud,
+    background: req.body.background,
     hospital: req.body.hospital,
+    gender: req.body.gender
   });
+
+  if (req.file) {
+    const fileName = req.file.filename;
+    const basePath = `${req.protocol}://${req.get('host')}/public/img/doctor/`;
+    doctor['photo'] = `${basePath}${fileName}`;
+  }
 
   console.log(req.file);
   doctor = await doctor.save();
@@ -102,9 +111,19 @@ exports.createDoctor = asyncHandler(async (req, res) => {
 });
 
 exports.updateDoctor = asyncHandler(async (req, res) => {
+  console.log(res.locals) // From doctorVerify
+  console.log(req.body) // Doctor input
   if (req.body.specialization) {
     const specialization = await Specialization.findById(req.body.specialization);
     if (!specialization) return res.status(400).send('Invalid specialization');
+  }
+  if (req.body.password) {
+    req.body.passwordHash = bcrypt.hashSync(req.body.password, 10)
+  }
+  if (req.file) {
+    const fileName = req.file.filename;
+    const basePath = `${req.protocol}://${req.get('host')}/public/img/doctor/`;
+    req.body.photo = `${basePath}${fileName}`;
   }
   const doctors = await Doctor.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
@@ -135,7 +154,11 @@ exports.doctorLogin = asyncHandler(async (req, res) => {
   const doctor = await Doctor.findOne({email: req.body.email});
   const secret = process.env.secret;
   if (!doctor) {
-    return res.status(400).send('The doctor not found');
+    return res.status(400).json({
+      status: 'fail',
+      data: null,
+      message: 'Incorrent Email or Password',
+    });
   }
   if (doctor && bcrypt.compareSync(req.body.password, doctor.passwordHash)) {
     const token = jwt.sign(
@@ -150,10 +173,15 @@ exports.doctorLogin = asyncHandler(async (req, res) => {
 
     res.status(200).json({user: doctor.email, token: token});
   } else {
-    res.status(400).json({
+    return res.status(400).json({
       status: 'fail',
       data: null,
-      message: 'password is wrong!',
+      message: 'Incorrent Email or Password',
     });
   }
+});
+
+exports.checkDoctorLogin = asyncHandler(async (req, res) => {
+  // res.send(req.body);
+  res.send(res.locals);
 });
