@@ -1,4 +1,4 @@
-/* This example requires Tailwind CSS v2.0+ */
+/* Incomming call card component */
 import {Fragment, useRef, useState} from 'react';
 import {Dialog, Transition} from '@headlessui/react';
 import {PhoneIncomingIcon} from '@heroicons/react/outline';
@@ -9,6 +9,12 @@ const IncommingCall = ({answerCall}) => {
   const [open, setOpen] = useState(true);
 
   const cancelButtonRef = useRef(null);
+  const [play, {stop}] = useSound(sound, {
+    loop: true,
+  });
+
+  play();
+
   const [play, {stop}] = useSound(sound, {
     loop: true,
   });
